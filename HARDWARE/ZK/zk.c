@@ -1,5 +1,6 @@
 #include "oled.h" 
 #include "string.h" 
+#include "math.h" 
 
 
 u8 FontBuf[128];//字库缓存	
@@ -8,12 +9,8 @@ u8 FontBuf[128];//字库缓存
 /****送指令到字库IC***/
 void ZK_command(u8 data){
 	u8 i;
-	for(i=0;i<8;i++)
-	{
-		if(data&0x80)
-			MOSI = 1;
-		else
-			MOSI = 0;
+	for(i=0;i<8;i++){
+		MOSI = (data&0x80) != 0;
 		SCLK = 0;  //字库时钟拉低 
 		data = data<<1;
 		SCLK = 1;  //字库时钟拉高
@@ -27,10 +24,8 @@ u8  get_data_from_ROM(void)
 	u8  ret_data=0; 		//返回数据初始化
 	
 	SCLK = 1;						//字库时钟拉高
-	for(i=0;i<8;i++)
-	{
+	for(i=0;i<8;i++){
 	 	SCLK = 0;  //字库时钟拉低  
-	
 		ret_data <<= 1;
 		
 		if(MISO)
@@ -314,27 +309,26 @@ void Display_Asc_String(u8 zk_num,u16 x, u16 y, u8  text[])
 		case '6':  BaseAdd=0x1E5A50; n=64;d=16;c=32; break;	 //  16x32 ASCII
 	}
 		
-	while((text[i]>0x00)){	
+	while((text[i]>0x00)){
 	 if(x>(256-d)){
 		 y=y+c; 
 		 x=0; 
 		}//溢出换行
-
-
-		if((text[i] >= 0x20) &&(text[i] <= 0x7E)){						
-			FontAddr = 	text[i]-0x20;
-			FontAddr = (u32)((FontAddr*n)+BaseAdd);
-
-			AddrHigh = (FontAddr&0xff0000)>>16;  /*地址的高8位,共24位*/
-			AddrMid = (FontAddr&0xff00)>>8;      /*地址的中8位,共24位*/
-			AddrLow = FontAddr&0xff;	     /*地址的低8位,共24位*/
-			get_n_bytes_data_from_ROM(AddrHigh,AddrMid,AddrLow,FontBuf,n );/*取一个汉字的数据，存到"FontBuf[]"*/
-
-			Display_Asc(zk_num,x,y);/*显示一个ascii到OLED上 */
-			i+=1;
-			x+=d;//下一个字坐标
-
+		
+		FontAddr = 	text[i]-0x20;
+		if((text[i] < 0x20) ||(text[i] > 0x7E)){
+			FontAddr = 	'?'-0x20;
 		}
+		FontAddr = (u32)((FontAddr*n)+BaseAdd);
+
+		AddrHigh = (FontAddr&0xff0000)>>16;  /*地址的高8位,共24位*/
+		AddrMid = (FontAddr&0xff00)>>8;      /*地址的中8位,共24位*/
+		AddrLow = FontAddr&0xff;	     /*地址的低8位,共24位*/
+		get_n_bytes_data_from_ROM(AddrHigh,AddrMid,AddrLow,FontBuf,n );/*取一个汉字的数据，存到"FontBuf[]"*/
+
+		Display_Asc(zk_num,x,y);/*显示一个ascii到OLED上 */
+		i+=1;
+		x+=d;//下一个字坐标
 	}
 	
 }
@@ -416,6 +410,149 @@ void Display_Asc_Num(u8 zk_num,u16 x, u16 y, u32 Num, u8 Len){
 	}
 	
 	Display_Asc_String(zk_num,x,y,Table);
+}
+
+//***************************************************************
+//  显示 浮点数字 皮蛋龙测试
+//	 zk_num定义：汉字库的标示符 1:5x7 ASCII,2:7x8 ASCII, 3:6x12 ASCII, 4:8x16 ASCII,	5: 12x24 ASCII,6:16x32 ASCII;
+//   x: Start Column  开始列  
+//   y: Start Row   开始行 0~63 
+//	 Num: 显示数字
+//	 Len: 显示位数（指有效位）
+//*************************************************************** 
+void Display_Asc_fNum(u8 zk_num,u16 x, u16 y,long double Num, u8 Len){
+	static u8 Table[20] = {0};
+	long long in=Num;
+	long long buf=0;
+	long long de=0;
+	u8 L1=0;
+	u8 L2=0;
+	u8 i = 0;
+	buf=in;
+
+ 	memset(Table,0,sizeof(Table));
+
+	if(Len > 16) Len = 16;
+
+	while(buf!=0){                  //整数的长度
+    buf = buf / 10;
+    L1++;
+  }
+	
+	if(L1>Len){                    //显示不到小数
+		buf=(long long)5*pow(10,L1-Len+2);
+		if(in<0){
+			in=in-buf;  //精度后一位加5
+		}else{
+			in=in+buf;
+		}
+		L1=0;
+		buf=in;
+	  while(buf!=0){                  //整数的长度
+      buf = buf / 10;
+      L1++;
+    }
+		goto disp1;
+	}
+	else if(L1==Len){                    //显示整数位
+		if(in<0){
+			in+=(Num-in-0.5);
+		}else{
+			in+=(Num-in+0.5);
+		}
+		L1=0;
+		buf=in;
+	  while(buf!=0){                  //整数的长度
+      buf = buf / 10;
+      L1++;
+    }
+		if(L1>Len)goto disp1;
+		goto disp2;
+	}
+	else if(L1<Len){                        //显示小数
+		if(Num<0)Num-=5*pow(10,-(Len-L1));
+		else Num+=5*pow(10,-(Len-L1));
+		in=Num;
+		de=(Num-in)*pow(10,Len-L1-2);
+		if(de<0)de=-de;
+		L1=0;
+		buf=in;
+	  while(buf!=0){                  //整数的长度
+      buf = buf / 10;
+      L1++;
+    }
+		if(L1==0)L1=1;
+		L2=Len-L1-1;
+		if(L1==Len)goto disp2;
+		goto disp3;
+	}
+	
+disp1:
+	{                            //显示不到小数
+	  if(in<0){                            //判断符号
+		  Table[i++] = '-';
+		  in=-in;
+	  }else{
+		  Table[i++] = ' ';
+	  }
+		
+		if(Len<5 || L1>16){                   //判断是否超出或者显示不完
+			Table[i++] = 'E';
+			goto end;
+		}
+		
+		Table[i++] = '0' + (in/(long long)pow(10,L1-1)%10);
+		Table[i++] = '.';
+		buf=L1;
+	  for(Len=Len-2;Len>2;Len--){
+			Table[i++] = '0' + (in/(long long)pow(10,buf-2)%10);
+			buf--;
+	  }
+		Table[i++] = 'e';
+		if(L1-1 <= 9)
+			Table[i++] = '0'+L1-1;
+		else 
+			Table[i++] = 'A'+L1-10;
+		goto end;
+	}
+	
+disp2:
+	{
+	  if(in<0){                            //判断符号
+		  Table[i++] = '-';
+		  in=-in;
+	  }else{
+		  Table[i++] = ' ';
+	  }
+	  for(Len=Len;Len>0;Len--){
+		  Table[i++] = '0' + (in/(long long)pow(10,Len-1)%10);
+	  }
+		goto end;
+  }
+	
+disp3:
+	{
+	  if(in<0){                            //判断符号
+		  Table[i++] = '-';
+		  in=-in;
+	  }else{
+		  Table[i++] = ' ';
+	  }
+	  for(L1=L1;L1>0;L1--){
+		  Table[i++] = '0' + (in/(long long)pow(10,L1-1)%10);
+	  }
+		Table[i++] = '.';
+	  for(L2=L2;L2>0;L2--){
+		  Table[i++] = '0' + (de/(long long)pow(10,L2-1)%10);
+	  }
+		goto end;
+	}
+
+	end:
+	if(i>17)
+		SysState.err.bit.PROG_ERR = 1;
+	Display_Asc_String(zk_num,x,y,Table);
+	
 }
 
 

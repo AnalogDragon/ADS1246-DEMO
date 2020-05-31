@@ -53,9 +53,40 @@ struct KeyState_REG{
 
 /*----------------------------*/
 
+
+struct ERROR_BITS{
+	u16 ADC_ERR:1;
+	u16 PROG_ERR:1;
+	u16 Res:14;
+};
+
+union ERROR_REG{
+	u16											all;
+	struct ERROR_BITS 			bit;
+};
+
+struct FLAG_BITS{
+	u16 Restart:1;
+	u16 Res:15;
+};
+
+union FLAG_REG{
+	u16											all;
+	struct FLAG_BITS 			bit;
+};
+
+struct SysState_REG{
+	union ERROR_REG err;
+	union FLAG_REG flag;
+	u8 PowerOnStep;
+};
+
+
+/*----------------------------*/
+
 extern struct SysTime_REG SysTime;
 extern struct KeyState_REG KeyState;
-
+extern struct SysState_REG SysState;
 
 
 #endif

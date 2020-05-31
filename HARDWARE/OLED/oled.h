@@ -48,6 +48,8 @@ void Display_GBasc( u8 zk_num,u16 x,u16 y  );								  //  ÏÔÊ¾GB2312 ascii
 void Display_Asc_String(u8 zk_num,u16 x,u16 y , u8  text[]);		  //   ÏÔÊ¾ASCII ×Ö·û´®
 void Display_Asc( u8 zk_num,u16 x,u16 y);									  //   ÏÔÊ¾ASCII
 void Display_Asc_Num(u8 zk_num,u16 x, u16 y, u32 Num, u8 Len);
+void Display_Asc_fNum(u8 zk_num,u16 x, u16 y,long double Num, u8 Len);
+
 
 #endif
 

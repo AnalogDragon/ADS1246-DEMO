@@ -8,22 +8,16 @@
 //cmd:数据/命令标志 0,表示命令;1,表示数据;
 void OLED_WR_Byte(u8 dat,u8 cmd)
 {	
-	u8 i;			  
-	if(cmd)
-	  D_DC = 1;
-	else 
-	  D_DC = 0;
+	u8 i;
+	
+	D_DC = (cmd != 0);
 	D_CS = 0;
-	for(i=0;i<8;i++)
-	{			  
+	for(i=0;i<8;i++){
 		SCLK = 0;
-		if(dat&0x80)
-		   MOSI = 1;
-		else 
-		   MOSI = 0;
+		MOSI = (dat&0x80) != 0;
 		SCLK = 1;
 		dat<<=1;
-	}				 		  
+	}
 	D_CS = 1;
 	D_DC = 1;  	  
 } 

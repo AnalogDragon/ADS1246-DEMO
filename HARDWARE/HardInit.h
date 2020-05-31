@@ -17,13 +17,13 @@
 #define LEDB	PBout(7)
 
 //SPI
-#define MISO  GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_6)
+#define MISO  PAin(6)
 #define MOSI  PAout(7)
 #define SCLK  PAout(5)
 
 //ADC
 #define A_CS			PBout(5)
-#define A_IRQ  		GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_3)
+#define A_IRQ  		PAin(3)
 #define A_RST			PAout(4)
 #define A_START		PAout(8)
 

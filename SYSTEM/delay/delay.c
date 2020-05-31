@@ -88,6 +88,8 @@ void SysTimeInt(void){
 			}
 		}
 		GetKey();
+// 		if(A_CS|C_CS|D_CS)LEDB = 1;
+// 		else LEDB = 0;
 	}
 	
 }
